@@ -42,8 +42,6 @@ export default async (req, context) => {
     "VERSION:3.0",
     `N:${name};;;;`,
     `FN:${name}`,
-    `ORG:${process.env.CONTACT_ORG || ""}`,
-    `TITLE:${process.env.CONTACT_ROLE || ""}`,
     `TEL;TYPE=CELL:${process.env.CONTACT_PHONE || ""}`,
     `EMAIL:${process.env.CONTACT_EMAIL || ""}`,
     "END:VCARD",
