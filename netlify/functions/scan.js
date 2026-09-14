@@ -43,8 +43,12 @@ export default async (req, context) => {
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
   lines.push(`N:${lastName};${firstName};;;`);
   lines.push(`FN:${fullName}`);
-  if (process.env.CONTACT_ORG) lines.push(`EMAIL:${process.env.CONTACT_ORG}`);
-  if (process.env.CONTACT_ROLE) lines.push(`EMAIL:${process.env.CONTACT_ROLE}`);
+    if (process.env.CONTACT_ORG) {
+    lines.push(`ORG:${process.env.CONTACT_ORG}`);
+  } else {
+    lines.push(`ORG:;`);
+  }
+  if (process.env.CONTACT_ROLE) lines.push(`TITLE:${process.env.CONTACT_ROLE}`);
   if (process.env.CONTACT_PHONE) lines.push(`TEL;TYPE=CELL:${process.env.CONTACT_PHONE}`);
   if (process.env.CONTACT_EMAIL) lines.push(`EMAIL:${process.env.CONTACT_EMAIL}`);
   lines.push("END:VCARD");
