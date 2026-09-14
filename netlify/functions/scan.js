@@ -36,15 +36,19 @@ export default async (req, context) => {
     // même si le log échoue, on renvoie quand même la fiche contact
   }
 
-  const vcard = [
-    "BEGIN:VCARD",
-    "VERSION:3.0",
-    `N:${process.env.CONTACT_NAME || ""}`,
-    `FN:${process.env.CONTACT_FNAME || ""}`,
-    `TEL;TYPE=CELL:${process.env.CONTACT_PHONE || ""}`,
-    `EMAIL:${process.env.CONTACT_EMAIL || ""}`,
-    "END:VCARD",
-  ].join("\r\n");
+  const firstName = process.env.CONTACT_FIRSTNAME || "";
+  const lastName = process.env.CONTACT_LASTNAME || "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Contact";
+
+  const lines = ["BEGIN:VCARD", "VERSION:3.0"];
+  lines.push(`N:${lastName};${firstName};;;`);
+  lines.push(`FN:${fullName}`);
+  if (process.env.CONTACT_ORG) lines.push(`ORG:${process.env.CONTACT_ORG}`);
+  if (process.env.CONTACT_ROLE) lines.push(`TITLE:${process.env.CONTACT_ROLE}`);
+  if (process.env.CONTACT_PHONE) lines.push(`TEL;TYPE=CELL:${process.env.CONTACT_PHONE}`);
+  if (process.env.CONTACT_EMAIL) lines.push(`EMAIL:${process.env.CONTACT_EMAIL}`);
+  lines.push("END:VCARD");
+  const vcard = lines.join("\r\n");
 
   return new Response(vcard, {
     status: 200,
