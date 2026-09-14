@@ -1,3 +1,394 @@
-Tableau de bord
-Consultation des scans du QR code
-Voir les scans
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carte de contact</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2b2d;
+    --paper:#eef0ea;
+    --line:#c9cdc0;
+    --moss:#3c5a4e;
+    --clay:#a8552f;
+    --card:#ffffff;
+    --muted:#6b7570;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px;
+  }
+  .stage{width:100%;max-width:460px;}
+
+  /* ---------- Contact view ---------- */
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:36px 30px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    top:0;left:0;right:0;height:6px;
+    background:var(--moss);
+  }
+  .name{
+    font-size:28px;
+    letter-spacing:0.2px;
+    margin:8px 0 2px;
+  }
+  .role{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:14px;
+    color:var(--muted);
+    margin:0 0 22px;
+  }
+  .field{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:15px;
+    padding:10px 0;
+    border-top:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .field span.k{color:var(--muted);font-size:12px;text-transform:none;white-space:nowrap;}
+  .field span.v{text-align:right;word-break:break-word;}
+  .add-btn{
+    width:100%;
+    margin-top:24px;
+    padding:14px;
+    background:var(--moss);
+    color:#fff;
+    border:none;
+    border-radius:2px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .add-btn:active{opacity:0.85;}
+  .foot-link{
+    text-align:center;
+    margin-top:18px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .foot-link a{color:var(--muted);}
+
+  /* ---------- Admin view ---------- */
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:28px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .panel h1{font-family:inherit;font-size:20px;margin:0 0 4px;font-weight:600;}
+  .panel .sub{color:var(--muted);font-size:13px;margin:0 0 24px;}
+  .panel label{display:block;font-size:12px;color:var(--muted);margin:14px 0 4px;}
+  .panel input{
+    width:100%;padding:9px 10px;border:1px solid var(--line);
+    border-radius:2px;font-size:14px;font-family:inherit;background:#fbfbf9;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .save-btn, .ghost-btn{
+    margin-top:20px;padding:11px 16px;border-radius:2px;font-size:14px;
+    font-family:inherit;cursor:pointer;
+  }
+  .save-btn{background:var(--ink);color:#fff;border:none;}
+  .ghost-btn{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .stat-row{display:flex;gap:12px;margin:22px 0;}
+  .stat{flex:1;border:1px solid var(--line);padding:14px;text-align:center;}
+  .stat .num{font-size:26px;font-family:"Iowan Old Style",Georgia,serif;}
+  .stat .lab{font-size:11px;color:var(--muted);margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:500;font-size:11px;}
+  .qr-box{text-align:center;margin:18px 0;padding:20px;border:1px solid var(--line);background:#fff;}
+  .small{font-size:11px;color:var(--muted);}
+  .lockscreen{max-width:280px;margin:0 auto;}
+  .tabbar{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--line);}
+  .tabbar button{
+    flex:1;background:none;border:none;padding:10px 0;font-family:inherit;
+    font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+  }
+  .tabbar button.active{color:var(--ink);border-bottom-color:var(--clay);}
+  .hidden{display:none;}
+  .msg{font-size:12px;margin-top:8px;}
+  .msg.err{color:var(--clay);}
+  .msg.ok{color:var(--moss);}
+</style>
+</head>
+<body>
+<div class="stage" id="stage"></div>
+
+<script>
+const stage = document.getElementById('stage');
+const isAdmin = location.hash === '#admin';
+
+const DEFAULTS = {
+  name: "Prénom Nom",
+  role: "Fonction — Société",
+  phone: "+33 6 00 00 00 00",
+  email: "prenom.nom@exemple.com",
+  org: "Société",
+  pin: "1234"
+};
+
+async function getContact(){
+  try{
+    const r = await window.storage.get('contact-info', true);
+    return r ? JSON.parse(r.value) : {...DEFAULTS};
+  }catch(e){ return {...DEFAULTS}; }
+}
+async function setContact(c){
+  await window.storage.set('contact-info', JSON.stringify(c), true);
+}
+async function getPin(){
+  try{
+    const r = await window.storage.get('admin-pin', true);
+    return r ? r.value : DEFAULTS.pin;
+  }catch(e){ return DEFAULTS.pin; }
+}
+async function setPin(p){
+  await window.storage.set('admin-pin', p, true);
+}
+async function logScan(){
+  try{
+    let geo = {};
+    try{
+      const res = await fetch('https://ipapi.co/json/');
+      if(res.ok){
+        const d = await res.json();
+        geo = { city: d.city || null, region: d.region || null, country: d.country_name || null };
+      }
+    }catch(e){}
+    const ua = navigator.userAgent;
+    let device = "Ordinateur";
+    if(/Mobi|Android/i.test(ua)) device = "Mobile";
+    else if(/iPad|Tablet/i.test(ua)) device = "Tablette";
+    let browser = "Navigateur inconnu";
+    if(ua.includes("Firefox")) browser = "Firefox";
+    else if(ua.includes("Edg")) browser = "Edge";
+    else if(ua.includes("Chrome")) browser = "Chrome";
+    else if(ua.includes("Safari")) browser = "Safari";
+    const entry = {
+      ts: new Date().toISOString(),
+      city: geo.city, region: geo.region, country: geo.country,
+      device, browser
+    };
+    const key = 'scan:' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+    await window.storage.set(key, JSON.stringify(entry), true);
+  }catch(e){ /* fail silently, never block the contact view */ }
+}
+async function getScans(){
+  try{
+    const list = await window.storage.list('scan:', true);
+    if(!list || !list.keys) return [];
+    const entries = await Promise.all(list.keys.map(async k=>{
+      try{
+        const r = await window.storage.get(k, true);
+        return r ? JSON.parse(r.value) : null;
+      }catch(e){ return null; }
+    }));
+    return entries.filter(Boolean).sort((a,b)=> new Date(b.ts)-new Date(a.ts));
+  }catch(e){ return []; }
+}
+
+function vcardFor(c){
+  return `BEGIN:VCARD
+VERSION:3.0
+N:${c.name};;;;
+FN:${c.name}
+ORG:${c.org}
+TITLE:${c.role}
+TEL;TYPE=CELL:${c.phone}
+EMAIL:${c.email}
+END:VCARD`;
+}
+
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('fr-FR') + ' · ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ---------------- CONTACT VIEW ----------------
+async function renderContact(){
+  stage.innerHTML = `<div class="card"><div style="height:12px"></div></div>`;
+  const c = await getContact();
+  logScan(); // silent, non-blocking
+
+  stage.innerHTML = `
+    <div class="card">
+      <div class="name">${c.name}</div>
+      <p class="role">${c.role}</p>
+      <div class="field"><span class="k">Téléphone</span><span class="v">${c.phone}</span></div>
+      <div class="field"><span class="k">E-mail</span><span class="v">${c.email}</span></div>
+      <div class="field"><span class="k">Société</span><span class="v">${c.org}</span></div>
+      <button class="add-btn" id="dlvcf">Ajouter aux contacts</button>
+    </div>
+    <p class="foot-link">·</p>
+  `;
+  document.getElementById('dlvcf').onclick = ()=>{
+    const blob = new Blob([vcardFor(c)], {type:'text/vcard'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = (c.name || 'contact').replace(/\s+/g,'_') + '.vcf';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+}
+
+// ---------------- ADMIN VIEW ----------------
+async function renderAdmin(){
+  const pin = await getPin();
+  stage.innerHTML = `
+    <div class="panel lockscreen">
+      <h1>Tableau de bord</h1>
+      <p class="sub">Code d'accès requis</p>
+      <input type="password" id="pinInput" placeholder="Code" maxlength="12">
+      <button class="save-btn" id="pinGo" style="width:100%">Entrer</button>
+      <p class="msg err hidden" id="pinErr">Code incorrect.</p>
+    </div>
+  `;
+  document.getElementById('pinGo').onclick = async ()=>{
+    const val = document.getElementById('pinInput').value;
+    if(val === pin){ renderDashboard(); }
+    else { document.getElementById('pinErr').classList.remove('hidden'); }
+  };
+  document.getElementById('pinInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') document.getElementById('pinGo').click();
+  });
+}
+
+async function renderDashboard(){
+  const c = await getContact();
+  const scans = await getScans();
+  const baseUrl = location.origin + location.pathname;
+
+  stage.innerHTML = `
+    <div class="panel">
+      <h1>Tableau de bord</h1>
+      <p class="sub">Visible uniquement par toi via ce code d'accès — pense à le changer.</p>
+      <div class="tabbar">
+        <button class="tab-btn active" data-tab="stats">Scans</button>
+        <button class="tab-btn" data-tab="qr">QR code</button>
+        <button class="tab-btn" data-tab="edit">Fiche & code</button>
+      </div>
+      <div id="tab-stats"></div>
+      <div id="tab-qr" class="hidden"></div>
+      <div id="tab-edit" class="hidden"></div>
+    </div>
+  `;
+
+  // --- Stats tab ---
+  const cities = {};
+  scans.forEach(s=>{ const k = s.city ? (s.city + (s.country?', '+s.country:'')) : 'Inconnue'; cities[k]=(cities[k]||0)+1; });
+  const topCity = Object.entries(cities).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('tab-stats').innerHTML = `
+    <div class="stat-row">
+      <div class="stat"><div class="num">${scans.length}</div><div class="lab">Scans totaux</div></div>
+      <div class="stat"><div class="num">${scans.filter(s=>{ const d=new Date(s.ts); const now=new Date(); return d.toDateString()===now.toDateString(); }).length}</div><div class="lab">Aujourd'hui</div></div>
+      <div class="stat"><div class="num" style="font-size:15px;padding-top:4px;">${topCity ? topCity[0] : '—'}</div><div class="lab">Ville la + fréquente</div></div>
+    </div>
+    ${scans.length === 0 ? '<p class="small">Aucun scan enregistré pour l\\'instant.</p>' : `
+    <table>
+      <thead><tr><th>Date</th><th>Ville approx.</th><th>Appareil</th></tr></thead>
+      <tbody>
+        ${scans.slice(0,50).map(s=>`
+          <tr>
+            <td>${fmtDate(s.ts)}</td>
+            <td>${s.city ? s.city + (s.country ? ', '+s.country : '') : '—'}</td>
+            <td>${s.device} · ${s.browser}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`}
+    <p class="small" style="margin-top:14px;">Localisation approximative déduite de l'adresse IP (ville), pas de position GPS. Aucune identité n'est collectée.</p>
+  `;
+
+  // --- QR tab ---
+  document.getElementById('tab-qr').innerHTML = `
+    <p class="small">Ce QR encode l'adresse actuelle de cette page. Génère-le une fois que tu as publié/partagé ce lien, pour être sûr d'encoder l'URL définitive.</p>
+    <div class="qr-box" id="qrHolder"></div>
+    <p class="small" style="word-break:break-all;">${baseUrl}</p>
+    <button class="ghost-btn" id="dlqr">Télécharger le QR (PNG)</button>
+  `;
+  new QRCode(document.getElementById('qrHolder'), {
+    text: baseUrl, width:200, height:200,
+    colorDark:"#1c2b2d", colorLight:"#ffffff"
+  });
+  document.getElementById('dlqr').onclick = ()=>{
+    const img = document.querySelector('#qrHolder img') || document.querySelector('#qrHolder canvas');
+    let dataUrl;
+    if(img.tagName === 'CANVAS') dataUrl = img.toDataURL('image/png');
+    else dataUrl = img.src;
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = 'qr-carte-contact.png'; a.click();
+  };
+
+  // --- Edit tab ---
+  document.getElementById('tab-edit').innerHTML = `
+    <label>Nom complet</label><input id="f_name" value="${c.name}">
+    <div class="row2">
+      <div><label>Fonction</label><input id="f_role" value="${c.role}"></div>
+      <div><label>Société</label><input id="f_org" value="${c.org}"></div>
+    </div>
+    <div class="row2">
+      <div><label>Téléphone</label><input id="f_phone" value="${c.phone}"></div>
+      <div><label>E-mail</label><input id="f_email" value="${c.email}"></div>
+    </div>
+    <button class="save-btn" id="saveContact">Enregistrer la fiche</button>
+    <p class="msg ok hidden" id="okC">Fiche mise à jour.</p>
+
+    <label style="margin-top:28px;">Nouveau code d'accès admin</label>
+    <input id="f_pin" placeholder="Laisser vide pour ne pas changer" maxlength="12">
+    <button class="ghost-btn" id="savePin">Changer le code</button>
+    <p class="msg ok hidden" id="okP">Code mis à jour.</p>
+  `;
+  document.getElementById('saveContact').onclick = async ()=>{
+    const updated = {
+      name: document.getElementById('f_name').value.trim(),
+      role: document.getElementById('f_role').value.trim(),
+      org: document.getElementById('f_org').value.trim(),
+      phone: document.getElementById('f_phone').value.trim(),
+      email: document.getElementById('f_email').value.trim(),
+    };
+    await setContact(updated);
+    document.getElementById('okC').classList.remove('hidden');
+  };
+  document.getElementById('savePin').onclick = async ()=>{
+    const v = document.getElementById('f_pin').value.trim();
+    if(v){ await setPin(v); document.getElementById('okP').classList.remove('hidden'); }
+  };
+
+  // tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      ['stats','qr','edit'].forEach(t=>{
+        document.getElementById('tab-'+t).classList.toggle('hidden', t !== btn.dataset.tab);
+      });
+    };
+  });
+}
+
+if(isAdmin){ renderAdmin(); } else { renderContact(); }
+</script>
+</body>
+</html>
+
