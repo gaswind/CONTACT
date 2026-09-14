@@ -36,12 +36,11 @@ export default async (req, context) => {
     // même si le log échoue, on renvoie quand même la fiche contact
   }
 
-  const name = process.env.CONTACT_NAME || "Prénom Nom";
   const vcard = [
     "BEGIN:VCARD",
     "VERSION:3.0",
-    `N:${name}`,
-    `FN:${fname}`,
+    `N:${process.env.CONTACT_NAME || ""}`,
+    `FN:${process.env.CONTACT_FNAME || ""}`,
     `TEL;TYPE=CELL:${process.env.CONTACT_PHONE || ""}`,
     `EMAIL:${process.env.CONTACT_EMAIL || ""}`,
     "END:VCARD",
