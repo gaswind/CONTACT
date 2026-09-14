@@ -40,8 +40,8 @@ export default async (req, context) => {
   const vcard = [
     "BEGIN:VCARD",
     "VERSION:3.0",
-    `N:${name};;;;`,
-    `FN:${name}`,
+    `N:${name}`,
+    `FN:${fname}`,
     `TEL;TYPE=CELL:${process.env.CONTACT_PHONE || ""}`,
     `EMAIL:${process.env.CONTACT_EMAIL || ""}`,
     "END:VCARD",
